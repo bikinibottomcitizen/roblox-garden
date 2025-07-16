@@ -102,11 +102,16 @@ class RobloxGardenApp:
         logger.info("Application shutdown complete")
     
     async def _websocket_loop(self) -> None:
-        """Main WebSocket monitoring loop."""
+        """Main WebSocket monitoring loop with robust error handling."""
         logger.info("Starting WebSocket monitoring loop...")
+        
+        consecutive_errors = 0
+        max_consecutive_errors = 5
         
         while self.is_running:
             try:
+                consecutive_errors = 0  # Reset on successful iteration
+                
                 # Connect to WebSocket
                 await self.websocket_client.connect()
                 
@@ -118,11 +123,17 @@ class RobloxGardenApp:
                     await self._process_shop_data(shop_data)
                 
             except Exception as e:
-                logger.error(f"WebSocket error: {e}")
+                consecutive_errors += 1
+                logger.error(f"WebSocket error (attempt {consecutive_errors}): {e}")
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.error(f"Too many consecutive errors ({max_consecutive_errors}), stopping")
+                    break
                 
                 if self.is_running:
-                    logger.info(f"Reconnecting in {self.settings.websocket_reconnect_delay} seconds...")
-                    await asyncio.sleep(self.settings.websocket_reconnect_delay)
+                    wait_time = min(self.settings.websocket_reconnect_delay * consecutive_errors, 60)
+                    logger.info(f"Reconnecting in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
     
     async def _scheduler_loop(self) -> None:
         """Scheduler loop for periodic full updates."""

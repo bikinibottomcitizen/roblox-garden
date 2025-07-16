@@ -131,6 +131,7 @@ class WebSocketClient:
         self.settings = settings
         self.session = None
         self._last_shop_data = None
+        self._is_connected = False
         
         # API endpoints
         self.base_url = settings.roblox_api_base_url
@@ -141,40 +142,78 @@ class WebSocketClient:
         try:
             logger.info(f"🔍 Подключение к Roblox Garden API...")
             
+            # Close existing session if any
+            if self.session and not self.session.closed:
+                await self.session.close()
+            
             # Инициализация HTTP сессии
             if aiohttp is None:
                 raise ImportError("aiohttp is required for API connection")
                 
-            self.session = aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=30)
+            # Create session with SSL verification disabled for problematic endpoints
+            connector = aiohttp.TCPConnector(
+                ssl=False,  # Disable SSL verification if needed
+                limit=10,
+                limit_per_host=5,
+                keepalive_timeout=30,
+                enable_cleanup_closed=True
             )
             
+            self.session = aiohttp.ClientSession(
+                connector=connector,
+                timeout=aiohttp.ClientTimeout(total=30, connect=10),
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                }
+            )
+            
+            self._is_connected = True
             logger.info("✅ API клиент инициализирован")
             
         except Exception as e:
             logger.error(f"❌ Ошибка подключения к API: {e}")
+            self._is_connected = False
             raise
     
     async def close(self) -> None:
-        """Close the connection."""
-        if self.session:
-            await self.session.close()
-        logger.info("🔌 Соединение закрыто")
+        """Close the connection gracefully."""
+        try:
+            self._is_connected = False
+            if self.session and not self.session.closed:
+                # Close all pending connections gracefully
+                await self.session.close()
+                # Wait a bit for cleanup
+                await asyncio.sleep(0.1)
+            logger.info("🔌 Соединение закрыто")
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка при закрытии соединения: {e}")
     
     async def listen(self) -> AsyncGenerator[ShopData, None]:
-        """Listen for shop data updates."""
+        """Listen for shop data updates with robust error handling."""
         logger.info("🎯 Начинаем мониторинг обновлений магазина...")
         
         iteration = 0
-        while True:  # Infinite loop with proper error handling
+        consecutive_errors = 0
+        max_consecutive_errors = 5
+        
+        while self._is_connected:
             try:
                 iteration += 1
+                consecutive_errors = 0  # Reset error counter on successful iteration
+                
+                # Ensure we have a valid session
+                if not self.session or self.session.closed:
+                    logger.info("🔄 Переподключение к API...")
+                    await self.connect()
+                
                 # Fetch shop data from HTTP API
                 shop_data = await self._fetch_shop_data()
                 
                 if shop_data:
                     logger.debug(f"📊 Получены данные: {len(shop_data.items)} предметов")
                     yield shop_data
+                else:
+                    logger.warning("⚠️ Получены пустые данные от API")
                 
                 # Wait before next poll
                 poll_interval = getattr(self.settings, 'API_POLL_INTERVAL', 30)
@@ -183,9 +222,48 @@ class WebSocketClient:
             except asyncio.CancelledError:
                 logger.info("🛑 Мониторинг остановлен")
                 break
+                
             except Exception as e:
-                logger.error(f"❌ Ошибка в цикле мониторинга: {e}")
-                await asyncio.sleep(10)  # Wait before retry
+                # Handle aiohttp specific exceptions if available
+                if aiohttp and (isinstance(e, aiohttp.ClientConnectionError) or isinstance(e, aiohttp.ClientError)):
+                    consecutive_errors += 1
+                    logger.error(f"❌ Ошибка соединения (попытка {consecutive_errors}): {e}")
+                    
+                    if consecutive_errors >= max_consecutive_errors:
+                        logger.error(f"💥 Превышено максимальное количество ошибок ({max_consecutive_errors})")
+                        break
+                    
+                    # Reconnect on connection errors
+                    await self._handle_connection_error()
+                    continue
+                    
+                # Handle other exceptions
+                consecutive_errors += 1
+                logger.error(f"❌ Неожиданная ошибка в цикле мониторинга: {e}")
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    logger.error(f"💥 Превышено максимальное количество ошибок ({max_consecutive_errors})")
+                    break
+                    
+                await asyncio.sleep(min(10 * consecutive_errors, 60))  # Exponential backoff
+    
+    async def _handle_connection_error(self) -> None:
+        """Handle connection errors with proper cleanup and reconnection."""
+        try:
+            # Close current session
+            if self.session and not self.session.closed:
+                await self.session.close()
+                await asyncio.sleep(0.5)  # Wait for cleanup
+            
+            # Wait before reconnecting
+            await asyncio.sleep(5)
+            
+            # Reconnect
+            await self.connect()
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка при переподключении: {e}")
+            await asyncio.sleep(10)
     
     async def fetch_shop_data(self) -> Optional[ShopData]:
         """Public method to fetch shop data once."""
