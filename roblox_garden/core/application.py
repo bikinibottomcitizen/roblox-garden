@@ -38,7 +38,6 @@ class RobloxGardenApp:
         
         # State tracking
         self.current_shop_data: Optional[ShopData] = None
-        self.last_full_update: Optional[datetime] = None
         self.known_items: Dict[str, ShopItem] = {}
         
         # Tasks
@@ -71,12 +70,14 @@ class RobloxGardenApp:
             logger.info("🚀 Application started successfully! Press Ctrl+C to stop.")
             
             # Wait for shutdown signal or task completion
+            tasks_to_wait = [
+                asyncio.create_task(self._shutdown_event.wait()),
+                self.websocket_task,
+                self.scheduler_task
+            ]
+            
             done, pending = await asyncio.wait(
-                [
-                    asyncio.create_task(self._shutdown_event.wait()),
-                    self.websocket_task,
-                    self.scheduler_task
-                ],
+                tasks_to_wait,
                 return_when=asyncio.FIRST_COMPLETED
             )
             
@@ -164,22 +165,44 @@ class RobloxGardenApp:
         logger.info("WebSocket monitoring loop ended")
     
     async def _scheduler_loop(self) -> None:
-        """Scheduler loop for periodic full updates."""
-        logger.info(f"Starting scheduler loop (full reports: {self.settings.shop_update_interval}s, checks: {self.settings.shop_check_interval}s)...")
+        """Scheduler loop for periodic full updates at exact time intervals."""
+        logger.info(f"Starting scheduler loop (full reports every {self.settings.full_report_interval} minutes at :00, :05, :10, etc.)")
         
         while self.is_running and not self._shutdown_event.is_set():
             try:
-                # Check if it's time for a full update
+                # Calculate next scheduled time (every N minutes at :00, :05, :10, etc.)
                 now = datetime.now()
+                current_minute = now.minute
+                interval = self.settings.full_report_interval
                 
-                if (self.last_full_update is None or 
-                    now - self.last_full_update >= timedelta(seconds=self.settings.shop_update_interval)):
-                    
+                # Calculate next target minute
+                next_minute = ((current_minute // interval) + 1) * interval
+                if next_minute >= 60:
+                    next_minute = 0
+                    next_time = now.replace(hour=(now.hour + 1) % 24, minute=next_minute, second=0, microsecond=0)
+                else:
+                    next_time = now.replace(minute=next_minute, second=0, microsecond=0)
+                
+                # If we're past the target time, move to next interval
+                if next_time <= now:
+                    next_minute = ((next_minute // interval) + 1) * interval
+                    if next_minute >= 60:
+                        next_minute = 0
+                        next_time = next_time.replace(hour=(next_time.hour + 1) % 24, minute=next_minute)
+                    else:
+                        next_time = next_time.replace(minute=next_minute)
+                
+                # Calculate sleep time
+                sleep_seconds = (next_time - now).total_seconds()
+                
+                logger.info(f"Next full report scheduled at {next_time.strftime('%H:%M')} (in {sleep_seconds:.0f} seconds)")
+                
+                # Sleep until next scheduled time
+                await asyncio.sleep(sleep_seconds)
+                
+                # Send full report if we're still running
+                if self.is_running and not self._shutdown_event.is_set():
                     await self._send_full_update()
-                    self.last_full_update = now
-                
-                # Sleep for configured check interval
-                await asyncio.sleep(self.settings.shop_check_interval)
                 
             except Exception as e:
                 logger.error(f"Scheduler error: {e}")
@@ -203,6 +226,7 @@ class RobloxGardenApp:
         
         if new_items:
             logger.info(f"Detected {len(new_items)} new items")
+            # Send new items update immediately
             await self._send_new_items_update(new_items)
     
     def _detect_new_items(self, current_items: list[ShopItem]) -> list[ShopItem]:
@@ -323,7 +347,6 @@ class RobloxGardenApp:
             
             if success:
                 logger.info(f"Initial full report sent with {len(filtered_items)} items")
-                self.last_full_update = datetime.now()
             else:
                 logger.error("Failed to send initial full report")
                 

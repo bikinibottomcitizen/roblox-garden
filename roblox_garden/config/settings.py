@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     shop_update_interval: int = Field(default=300, alias="SHOP_UPDATE_INTERVAL")
     shop_check_interval: int = Field(default=30, alias="SHOP_CHECK_INTERVAL")
     
+    # Report Configuration
+    full_report_interval: int = Field(
+        default=5, 
+        alias="FULL_REPORT_INTERVAL",
+        description="Interval in minutes for sending full reports (0:00, 0:05, 0:10, etc.)"
+    )
+    
     # Timezone
     timezone: str = Field(default="Europe/Moscow", alias="TIMEZONE")
     
