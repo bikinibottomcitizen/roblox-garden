@@ -30,6 +30,8 @@ class RarityFilter(ItemFilter):
         Rarity.DIVINE,
         Rarity.MYTHICAL,
         Rarity.MYTHIC,
+        Rarity.PRISMATIC,
+        Rarity.TRANSCENDENT,
         Rarity.CELESTIAL,
     ]
     

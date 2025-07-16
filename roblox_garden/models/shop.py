@@ -30,6 +30,7 @@ class Rarity(str, Enum):
     MYTHICAL = "Mythical"
     MYTHIC = "Mythic"
     PRISMATIC = "Prismatic"
+    TRANSCENDENT = "Transcendent"
     CELESTIAL = "Celestial"
     UNKNOWN = "Unknown"
 
@@ -75,6 +76,8 @@ class ShopItem(BaseModel):
         
         # Get short rarity name for consistency
         rarity_map = {
+            Rarity.TRANSCENDENT: "Transcendent",
+            Rarity.PRISMATIC: "Prismatic", 
             Rarity.MYTHICAL: "Mythic",
             Rarity.DIVINE: "Divine", 
             Rarity.LEGENDARY: "Legend",
