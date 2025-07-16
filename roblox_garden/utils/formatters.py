@@ -21,17 +21,31 @@ class MessageFormatter:
             self.timezone = pytz.timezone('Europe/Moscow')
     
     def format_new_items_message(self, items: List[ShopItem]) -> str:
-        """Format message for new items (updates channel)."""
+        """Format message for new items (updates channel) in new format."""
         if not items:
             return ""
         
         message_parts = []
         
+        # Format each item
         for item in items:
-            item_text = item.format_for_telegram()
-            message_parts.append(item_text)
+            # Get emoji based on type
+            emoji = self._get_type_emoji(item.type)
+            
+            # Format: 🥚[Mythic] Mythical Egg в стоке
+            rarity_short = self._get_rarity_short_name(item.rarity)
+            message_parts.append(f"{emoji}[{rarity_short}] {item.name} в стоке")
+            message_parts.append("🛒 Доступно для покупки")
         
-        return "\n---\n".join(message_parts)
+        # Add timestamp at the end (Moscow time)
+        moscow_time = datetime.now(self.timezone)
+        time_str = moscow_time.strftime("%H:%M")
+        
+        # Join all parts and add timestamp
+        message = "\n\n".join(["\n".join(message_parts[i:i+2]) for i in range(0, len(message_parts), 2)])
+        message += f"\n\nсток {time_str} мск"
+        
+        return message
     
     def format_full_report_message(self, items: List[ShopItem], timestamp: datetime) -> str:
         """Format full report message (full channel)."""
@@ -117,3 +131,30 @@ class MessageFormatter:
         time_str = moscow_time.strftime("%H:%M")
         
         return f"ℹ️ Статус ({time_str}): {status}"
+    
+    def _get_type_emoji(self, item_type: ItemType) -> str:
+        """Get emoji for item type."""
+        emoji_map = {
+            ItemType.SEED: "🌱",
+            ItemType.GEAR: "⚙️", 
+            ItemType.EGG: "🥚",
+            ItemType.COSMETIC: "🎨",
+            ItemType.HONEY: "🍯"
+        }
+        return emoji_map.get(item_type, "📦")
+    
+    def _get_rarity_short_name(self, rarity) -> str:
+        """Get short rarity name for display."""
+        # Import here to avoid circular imports
+        from roblox_garden.models.shop import Rarity
+        
+        rarity_map = {
+            Rarity.MYTHICAL: "Mythic",
+            Rarity.DIVINE: "Divine", 
+            Rarity.LEGENDARY: "Legend",
+            Rarity.EPIC: "Epic",
+            Rarity.RARE: "Rare",
+            Rarity.UNCOMMON: "Uncommon",
+            Rarity.COMMON: "Common"
+        }
+        return rarity_map.get(rarity, rarity.value if hasattr(rarity, 'value') else str(rarity))

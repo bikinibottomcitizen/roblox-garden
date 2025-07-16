@@ -54,6 +54,9 @@ class RobloxGardenApp:
             # Initialize components
             await self.telegram_bot.initialize()
             
+            # Send initial full report
+            await self._send_initial_full_report()
+            
             # Start background tasks
             self.websocket_task = asyncio.create_task(self._websocket_loop())
             self.scheduler_task = asyncio.create_task(self._scheduler_loop())
@@ -232,3 +235,48 @@ class RobloxGardenApp:
             
         except Exception as e:
             logger.error(f"Failed to send full update: {e}")
+
+    async def _send_initial_full_report(self) -> None:
+        """Send initial full report immediately after startup."""
+        try:
+            logger.info("Sending initial full report...")
+            
+            # Get initial shop data
+            shop_data = await self.websocket_client.fetch_shop_data()
+            
+            if not shop_data:
+                logger.warning("No shop data available for initial report")
+                return
+            
+            # Set current shop data
+            self.current_shop_data = shop_data
+            
+            # Filter items for initial report
+            filtered_items = shop_data.get_filtered_items(self.item_filter)
+            
+            if not filtered_items:
+                logger.info("No items to include in initial report")
+                # Send empty report
+                message = self.message_formatter.format_full_report_message([], shop_data.timestamp)
+            else:
+                # Format full report message
+                message = self.message_formatter.format_full_report_message(
+                    filtered_items,
+                    shop_data.timestamp
+                )
+                
+                # Initialize known items
+                for item in filtered_items:
+                    self.known_items[item.id] = item
+            
+            # Send to full channel
+            success = await self.telegram_bot.send_to_full_channel(message)
+            
+            if success:
+                logger.info(f"Initial full report sent with {len(filtered_items)} items")
+                self.last_full_update = datetime.now()
+            else:
+                logger.error("Failed to send initial full report")
+                
+        except Exception as e:
+            logger.error(f"Failed to send initial full report: {e}")

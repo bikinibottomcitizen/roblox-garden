@@ -2,6 +2,26 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "🚀 Run Full App (With Telegram)",
+			"type": "shell",
+			"command": "python -m roblox_garden",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "new",
+				"clear": true
+			},
+			"options": {
+				"statusbar": {
+					"label": "🌱 Roblox Garden Running"
+				}
+			}
+		},
+		{
 			"label": "Install Dependencies and Run App",
 			"type": "shell",
 			"command": "pip install -r requirements.txt && python -m roblox_garden",
@@ -63,6 +83,21 @@
 				"reveal": "always",
 				"focus": false,
 				"panel": "new"
+			}
+		},
+		{
+			"label": "🔧 Test Telegram Bot",
+			"type": "shell",
+			"command": "python test_telegram.py",
+			"group": "test",
+			"isBackground": false,
+			"problemMatcher": [],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "new",
+				"clear": true
 			}
 		}
 	]

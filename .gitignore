@@ -303,3 +303,4 @@ temp/
 
 # OS generated files
 .directory
+.env
