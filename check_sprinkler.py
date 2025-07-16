@@ -41,7 +41,7 @@ async def check_advanced_sprinkler():
             print(f"   В наличии: {'✅' if advanced_sprinkler.in_stock else '❌'}")
             
             # Проверяем что в статической базе
-            static_rarity = StaticRarityDatabase.get_item_rarity("Advanced Sprinkler", ItemType.GEAR)
+            static_rarity = StaticRarityDatabase.get_rarity("Advanced Sprinkler", ItemType.GEAR)
             print(f"   Редкость в базе: {static_rarity.value}")
             
             # Проверяем фильтры

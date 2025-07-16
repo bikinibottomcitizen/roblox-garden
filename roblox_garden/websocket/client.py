@@ -117,11 +117,6 @@ class ItemDatabase:
             return ItemType.GEAR
         else:
             return ItemType.SEED  # Default to seed
-    
-    @classmethod
-    def get_item_rarity(cls, name: str) -> Rarity:
-        """Get item rarity from database."""
-        return cls.ITEM_RARITIES.get(name, Rarity.UNKNOWN)
 
 
 class WebSocketClient:
@@ -335,7 +330,7 @@ class WebSocketClient:
             if item_type == ItemType.UNKNOWN:
                 item_type = default_type
             
-            rarity = StaticRarityDatabase.get_item_rarity(name, item_type)
+            rarity = StaticRarityDatabase.get_rarity(name, item_type)
             
             # Create shop item
             item = ShopItem(
