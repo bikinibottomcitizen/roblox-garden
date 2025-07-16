@@ -49,12 +49,12 @@ class MessageFormatter:
     
     def format_full_report_message(self, items: List[ShopItem], timestamp: datetime) -> str:
         """Format full report message (full channel)."""
-        if not items:
-            return "📋 Полный отчет о стоке\n🕐 Время: нет данных\n\n❌ Нет доступных товаров"
-        
-        # Get Moscow time
+        # Get Moscow time (always show current time, even if no items)
         moscow_time = timestamp.astimezone(self.timezone)
         time_str = moscow_time.strftime("%H:%M")
+        
+        if not items:
+            return f"📋 Полный отчет о стоке\n🕐 Время: {time_str}\n\n❌ Нет доступных товаров"
         
         # Group items by type
         items_by_type = self._group_items_by_type(items)
@@ -158,3 +158,4 @@ class MessageFormatter:
             Rarity.COMMON: "Common"
         }
         return rarity_map.get(rarity, rarity.value if hasattr(rarity, 'value') else str(rarity))
+    
