@@ -3,6 +3,7 @@ Main application class that orchestrates all components.
 """
 
 import asyncio
+import signal
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Set
 
@@ -43,6 +44,9 @@ class RobloxGardenApp:
         # Tasks
         self.websocket_task: Optional[asyncio.Task] = None
         self.scheduler_task: Optional[asyncio.Task] = None
+        
+        # Signal handling
+        self._shutdown_event = asyncio.Event()
     
     async def run(self) -> None:
         """Start the application."""
@@ -50,6 +54,9 @@ class RobloxGardenApp:
         
         try:
             self.is_running = True
+            
+            # Setup signal handlers for graceful shutdown
+            self._setup_signal_handlers()
             
             # Initialize components
             await self.telegram_bot.initialize()
@@ -61,13 +68,28 @@ class RobloxGardenApp:
             self.websocket_task = asyncio.create_task(self._websocket_loop())
             self.scheduler_task = asyncio.create_task(self._scheduler_loop())
             
-            # Wait for tasks to complete
-            await asyncio.gather(
-                self.websocket_task,
-                self.scheduler_task,
-                return_exceptions=True
+            logger.info("🚀 Application started successfully! Press Ctrl+C to stop.")
+            
+            # Wait for shutdown signal or task completion
+            done, pending = await asyncio.wait(
+                [
+                    asyncio.create_task(self._shutdown_event.wait()),
+                    self.websocket_task,
+                    self.scheduler_task
+                ],
+                return_when=asyncio.FIRST_COMPLETED
             )
             
+            # Cancel pending tasks
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+            
+        except KeyboardInterrupt:
+            logger.info("Received keyboard interrupt (Ctrl+C)")
         except Exception as e:
             logger.error(f"Application error: {e}")
             raise
@@ -76,30 +98,34 @@ class RobloxGardenApp:
     
     async def shutdown(self) -> None:
         """Gracefully shutdown the application."""
-        logger.info("Shutting down application...")
+        logger.info("🛑 Shutting down application...")
         
         self.is_running = False
         
         # Cancel tasks
+        tasks_to_cancel = []
         if self.websocket_task and not self.websocket_task.done():
-            self.websocket_task.cancel()
-            try:
-                await self.websocket_task
-            except asyncio.CancelledError:
-                pass
-        
+            tasks_to_cancel.append(("WebSocket", self.websocket_task))
         if self.scheduler_task and not self.scheduler_task.done():
-            self.scheduler_task.cancel()
+            tasks_to_cancel.append(("Scheduler", self.scheduler_task))
+        
+        for task_name, task in tasks_to_cancel:
+            logger.info(f"🔄 Cancelling {task_name} task...")
+            task.cancel()
             try:
-                await self.scheduler_task
+                await task
             except asyncio.CancelledError:
-                pass
+                logger.info(f"✅ {task_name} task cancelled")
+            except Exception as e:
+                logger.error(f"❌ Error cancelling {task_name} task: {e}")
         
         # Shutdown components
+        logger.info("🔌 Closing connections...")
         await self.websocket_client.close()
         await self.telegram_bot.shutdown()
         
-        logger.info("Application shutdown complete")
+        logger.info("✅ Application shutdown complete")
+        logger.info("👋 Goodbye!")
     
     async def _websocket_loop(self) -> None:
         """Main WebSocket monitoring loop with robust error handling."""
@@ -108,7 +134,7 @@ class RobloxGardenApp:
         consecutive_errors = 0
         max_consecutive_errors = 5
         
-        while self.is_running:
+        while self.is_running and not self._shutdown_event.is_set():
             try:
                 consecutive_errors = 0  # Reset on successful iteration
                 
@@ -117,7 +143,7 @@ class RobloxGardenApp:
                 
                 # Process incoming data
                 async for shop_data in self.websocket_client.listen():
-                    if not self.is_running:
+                    if not self.is_running or self._shutdown_event.is_set():
                         break
                     
                     await self._process_shop_data(shop_data)
@@ -130,16 +156,18 @@ class RobloxGardenApp:
                     logger.error(f"Too many consecutive errors ({max_consecutive_errors}), stopping")
                     break
                 
-                if self.is_running:
+                if self.is_running and not self._shutdown_event.is_set():
                     wait_time = min(self.settings.websocket_reconnect_delay * consecutive_errors, 60)
                     logger.info(f"Reconnecting in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
+        
+        logger.info("WebSocket monitoring loop ended")
     
     async def _scheduler_loop(self) -> None:
         """Scheduler loop for periodic full updates."""
         logger.info("Starting scheduler loop...")
         
-        while self.is_running:
+        while self.is_running and not self._shutdown_event.is_set():
             try:
                 # Check if it's time for a full update
                 now = datetime.now()
@@ -155,7 +183,10 @@ class RobloxGardenApp:
                 
             except Exception as e:
                 logger.error(f"Scheduler error: {e}")
-                await asyncio.sleep(60)  # Wait longer on error
+                if self.is_running and not self._shutdown_event.is_set():
+                    await asyncio.sleep(60)  # Wait longer on error
+        
+        logger.info("Scheduler loop ended")
     
     async def _process_shop_data(self, shop_data: ShopData) -> None:
         """Process new shop data and send updates."""
@@ -227,20 +258,25 @@ class RobloxGardenApp:
             filtered_items = self.current_shop_data.get_filtered_items(self.item_filter)
             
             if not filtered_items:
-                logger.info("No items to include in full update")
-                return
-            
-            # Format full report message
-            message = self.message_formatter.format_full_report_message(
-                filtered_items,
-                self.current_shop_data.timestamp
-            )
+                logger.info("No items to include in full update - sending empty report")
+                # Send empty report instead of skipping
+                message = self.message_formatter.format_full_report_message(
+                    [],
+                    self.current_shop_data.timestamp
+                )
+            else:
+                # Format full report message with items
+                message = self.message_formatter.format_full_report_message(
+                    filtered_items,
+                    self.current_shop_data.timestamp
+                )
             
             # Send to full channel
             success = await self.telegram_bot.send_to_full_channel(message)
             
             if success:
-                logger.info(f"Sent full update with {len(filtered_items)} items")
+                item_count = len(filtered_items) if filtered_items else 0
+                logger.info(f"Sent full update with {item_count} items")
             else:
                 logger.error("Failed to send full update")
             
@@ -291,3 +327,19 @@ class RobloxGardenApp:
                 
         except Exception as e:
             logger.error(f"Failed to send initial full report: {e}")
+    
+    def _setup_signal_handlers(self) -> None:
+        """Setup signal handlers for graceful shutdown."""
+        def signal_handler():
+            logger.info("🛑 Received shutdown signal, gracefully stopping...")
+            self._shutdown_event.set()
+            self.is_running = False
+        
+        # Handle SIGINT (Ctrl+C) and SIGTERM
+        try:
+            if hasattr(signal, 'SIGINT'):
+                signal.signal(signal.SIGINT, lambda s, f: signal_handler())
+            if hasattr(signal, 'SIGTERM'):
+                signal.signal(signal.SIGTERM, lambda s, f: signal_handler())
+        except Exception as e:
+            logger.warning(f"Could not setup signal handlers: {e}")
