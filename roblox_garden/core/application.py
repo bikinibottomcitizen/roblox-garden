@@ -165,7 +165,7 @@ class RobloxGardenApp:
     
     async def _scheduler_loop(self) -> None:
         """Scheduler loop for periodic full updates."""
-        logger.info(f"Starting scheduler loop (update interval: {self.settings.shop_update_interval}s)...")
+        logger.info(f"Starting scheduler loop (full reports: {self.settings.shop_update_interval}s, checks: {self.settings.shop_check_interval}s)...")
         
         while self.is_running and not self._shutdown_event.is_set():
             try:
@@ -178,9 +178,8 @@ class RobloxGardenApp:
                     await self._send_full_update()
                     self.last_full_update = now
                 
-                # Sleep for a check interval (use minimum of 30 sec or half of update interval)
-                check_interval = min(30, max(10, self.settings.shop_update_interval // 2))
-                await asyncio.sleep(check_interval)
+                # Sleep for configured check interval
+                await asyncio.sleep(self.settings.shop_check_interval)
                 
             except Exception as e:
                 logger.error(f"Scheduler error: {e}")

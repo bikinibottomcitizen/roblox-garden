@@ -21,7 +21,8 @@ class Settings(BaseSettings):
         alias="ROBLOX_API_BASE_URL"
     )
     websocket_reconnect_delay: int = Field(default=5, alias="WEBSOCKET_RECONNECT_DELAY")
-    shop_update_interval: int = Field(default=300, alias="SHOP_UPDATE_INTERVAL")  # 5 minutes
+    shop_update_interval: int = Field(default=300, alias="SHOP_UPDATE_INTERVAL")  # Full report frequency (5 minutes)
+    shop_check_interval: int = Field(default=30, alias="SHOP_CHECK_INTERVAL")  # Check for changes frequency (30 seconds)
     
     # Logging Configuration
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

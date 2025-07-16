@@ -216,7 +216,7 @@ class WebSocketClient:
                     logger.warning("⚠️ Получены пустые данные от API")
                 
                 # Wait before next poll
-                poll_interval = getattr(self.settings, 'API_POLL_INTERVAL', 30)
+                poll_interval = getattr(self.settings, 'shop_check_interval', 30)
                 await asyncio.sleep(poll_interval)
                 
             except asyncio.CancelledError:
