@@ -228,6 +228,11 @@ test_*.py
 config.ini
 secrets.json
 
+# Secrets directory
+secrets/*.txt
+secrets/*.json
+secrets/*.key
+
 # Generated files
 *.pid
 *.seed
