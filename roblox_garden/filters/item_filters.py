@@ -121,10 +121,11 @@ class RobloxGardenFilter:
     
     @classmethod
     def create_seed_filter(cls) -> ItemFilter:
-        """Create filter for seeds (Divine+ rarity, in stock)."""
+        """Create filter for seeds (Divine+ rarity only, excluding Mythical, in stock)."""
+        # Divine+ включает Divine, Prismatic, Transcendent, но исключает Mythical
         return CompositeFilter([
             ItemTypeFilter({ItemType.SEED}),
-            RarityFilter(Rarity.DIVINE),
+            HighTierSeedFilter(),  # Новый фильтр для семян Divine+
             InStockFilter()
         ])
     
@@ -166,3 +167,17 @@ class OrFilter(ItemFilter):
     def should_include(self, item: ShopItem) -> bool:
         """Include item if any filter passes."""
         return any(f.should_include(item) for f in self.filters)
+
+
+class HighTierSeedFilter(ItemFilter):
+    """Filter for high-tier seeds (Divine, Prismatic, Transcendent - excluding Mythical)."""
+    
+    ALLOWED_SEED_RARITIES = {
+        Rarity.DIVINE,
+        Rarity.PRISMATIC, 
+        Rarity.TRANSCENDENT
+    }
+    
+    def should_include(self, item: ShopItem) -> bool:
+        """Include seeds with Divine+ rarity but exclude Mythical."""
+        return item.rarity in self.ALLOWED_SEED_RARITIES
