@@ -213,19 +213,23 @@ class RobloxGardenApp:
     
     async def _process_shop_data(self, shop_data: ShopData) -> None:
         """Process new shop data and send updates."""
-        logger.debug(f"Processing shop data with {len(shop_data.items)} items")
+        from datetime import datetime
+        
+        data_time = shop_data.timestamp.strftime("%H:%M:%S")
+        logger.debug(f"Processing shop data from {data_time} with {len(shop_data.items)} items")
         
         # Filter items according to our rules
         filtered_items = shop_data.get_filtered_items(self.item_filter)
         
         # Update current shop data
         self.current_shop_data = shop_data
+        logger.debug(f"Updated current shop data timestamp to {data_time}")
         
         # Detect new items
         new_items = self._detect_new_items(filtered_items)
         
         if new_items:
-            logger.info(f"Detected {len(new_items)} new items")
+            logger.info(f"Detected {len(new_items)} new items at {data_time}")
             # Send new items update immediately
             await self._send_new_items_update(new_items)
     
@@ -272,38 +276,53 @@ class RobloxGardenApp:
             logger.error(f"Failed to send new items update: {e}")
     
     async def _send_full_update(self) -> None:
-        """Send full shop report to the full channel."""
-        if not self.current_shop_data:
-            logger.warning("No shop data available for full update")
-            return
-        
+        """Send full shop report to the full channel with fresh data."""
         try:
+            # Always fetch fresh data for full reports to avoid stale data
+            logger.info("Fetching fresh shop data for full report")
+            fresh_shop_data = await self.websocket_client.fetch_shop_data()
+            
+            if not fresh_shop_data:
+                logger.warning("No fresh shop data available, using cached data")
+                shop_data = self.current_shop_data
+                if not shop_data:
+                    logger.error("No shop data available for full update")
+                    return
+                data_time = shop_data.timestamp.strftime("%H:%M:%S")
+                logger.info(f"Using cached shop data from {data_time}")
+            else:
+                shop_data = fresh_shop_data
+                # Update current shop data with fresh data
+                self.current_shop_data = fresh_shop_data
+                data_time = shop_data.timestamp.strftime("%H:%M:%S")
+                logger.info(f"Using fresh shop data from {data_time}")
+            
             # Filter items for full report
-            filtered_items = self.current_shop_data.get_filtered_items(self.item_filter)
+            filtered_items = shop_data.get_filtered_items(self.item_filter)
             
             if not filtered_items:
                 logger.info("No items to include in full update - sending empty report")
                 # Send empty report instead of skipping
                 message = self.message_formatter.format_full_report_message(
                     [],
-                    self.current_shop_data.timestamp
+                    shop_data.timestamp
                 )
             else:
                 # Format full report message with items
                 message = self.message_formatter.format_full_report_message(
                     filtered_items,
-                    self.current_shop_data.timestamp
+                    shop_data.timestamp
                 )
             
             # Send message to full channel
-            logger.info("Sending full report")
+            logger.info(f"Sending full report with data timestamp {data_time}")
             success = await self.telegram_bot.send_to_full_channel(message)
             
             if success:
                 item_count = len(filtered_items) if filtered_items else 0
-                logger.info(f"Sent full update with {item_count} items")
+                logger.info(f"✅ Sent full update with {item_count} items using data from {data_time}")
             else:
-                logger.error("Failed to send full update")
+                logger.error("❌ Failed to send full update")
             
         except Exception as e:
             logger.error(f"Failed to send full update: {e}")
