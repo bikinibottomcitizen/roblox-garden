@@ -1,0 +1,160 @@
+Metadata-Version: 2.4
+Name: roblox-garden-parser
+Version: 1.0.0
+Summary: Roblox Garden WebSocket parser with Telegram integration
+Author-email: Your Name <your.email@example.com>
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: asyncio
+Requires-Dist: websockets>=12.0
+Requires-Dist: python-telegram-bot>=21.0
+Requires-Dist: pydantic>=2.0
+Requires-Dist: aiohttp>=3.9
+Requires-Dist: python-dotenv>=1.0
+Requires-Dist: loguru>=0.7
+Requires-Dist: schedule>=1.2
+Requires-Dist: pytz>=2023.3
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21; extra == "dev"
+Requires-Dist: black>=23.0; extra == "dev"
+Requires-Dist: flake8>=6.0; extra == "dev"
+Requires-Dist: mypy>=1.0; extra == "dev"
+Requires-Dist: pre-commit>=3.0; extra == "dev"
+
+# Roblox Garden WebSocket Parser
+
+Современный Python парсер для мониторинга магазина игры Roblox Garden с интеграцией Telegram бота.
+
+## Возможности
+
+- 🔄 Парсинг WebSocket данных в реальном времени
+- 📱 Интеграция с Telegram ботом
+- 🎯 Умная фильтрация по редкости предметов
+- 📊 Два канала: полные обновления + только новые предметы
+- ⚙️ Конфигурируемые фильтры
+- 🏗️ Современная асинхронная архитектура
+
+## Фильтры
+
+### Семена и Гиры
+- **Редкость**: Divine и выше
+- **Исключения**: Harvest Tool, Favorite Tool, Cleaning Spray
+
+### Яйца
+Только следующие типы:
+- Bee Egg
+- Paradise Egg  
+- Bug Egg
+- Mythical Egg
+
+## Установка
+
+```bash
+# Клонирование репозитория
+git clone <repository-url>
+cd roblox-garden
+
+# Установка зависимостей
+pip install -e .
+
+# Для разработки
+pip install -e ".[dev]"
+```
+
+## Настройка
+
+1. Создайте файл `.env` в корне проекта:
+
+```env
+# Telegram Bot Configuration
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+TELEGRAM_FULL_CHANNEL_ID=-1001234567890
+TELEGRAM_UPDATES_CHANNEL_ID=-1001234567891
+
+# WebSocket Configuration
+ROBLOX_API_BASE_URL=https://gagapi.onrender.com
+WEBSOCKET_RECONNECT_DELAY=5
+SHOP_UPDATE_INTERVAL=300
+
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/roblox_garden.log
+```
+
+2. Настройте Telegram бота:
+   - Создайте бота через @BotFather
+   - Добавьте бота в каналы как администратора
+   - Получите ID каналов
+
+## Запуск
+
+```bash
+# Запуск основного приложения
+python -m roblox_garden
+
+# Запуск в режиме разработки
+python -m roblox_garden --debug
+```
+
+## Архитектура
+
+```
+roblox_garden/
+├── core/           # Основная логика
+├── models/         # Модели данных
+├── filters/        # Фильтры предметов
+├── telegram/       # Telegram интеграция
+├── websocket/      # WebSocket клиент
+├── utils/          # Утилиты
+└── config/         # Конфигурация
+```
+
+## Структура сообщений
+
+### Канал обновлений (новые предметы)
+```
+🌱[Divine] Giant Pinecone в стоке
+🛒 Доступно для покупки
+---
+```
+
+### Канал полного отчета (каждые 5 минут)
+```
+📋 Полный отчет о стоке
+🕐 Время: 04:34
+
+🌱 Seeds:
+  ✨ Beanstalk (1шт) (Divine)
+    ✅ В наличии
+
+📊 Статистика:
+📦 Всего товаров: 19
+✅ В наличии: 19
+```
+
+## Разработка
+
+```bash
+# Форматирование кода
+black .
+
+# Проверка типов
+mypy roblox_garden
+
+# Тестирование
+pytest
+
+# Pre-commit хуки
+pre-commit install
+```
+
+## Лицензия
+
+MIT License
