@@ -32,9 +32,10 @@ class MessageFormatter:
             # Get emoji based on type
             emoji = self._get_type_emoji(item.type)
             
-            # Format: <b>🥚[Mythic] Mythical Egg в стоке</b>
+            # Format: <b>🥚[Mythic] Mythical Egg (3шт) в стоке</b>
             rarity_short = self._get_rarity_short_name(item.rarity)
-            message_parts.append(f"<b>{emoji}[{rarity_short}] {item.name} в стоке</b>")
+            quantity_text = f"({item.quantity}шт) " if item.quantity and item.quantity > 1 else ""
+            message_parts.append(f"<b>{emoji}[{rarity_short}] {item.name} {quantity_text}в стоке</b>")
             message_parts.append("🛒 Доступно для покупки")
         
         # Add timestamp at the end (Moscow time)
