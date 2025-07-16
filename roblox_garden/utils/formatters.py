@@ -33,19 +33,17 @@ class MessageFormatter:
         for item in items:
             # Get emoji based on type
             emoji = self._get_type_emoji(item.type)
-            
-            # Format: ⚙️[Mythic] Magnifying Glass (1шт) в стоке  
             rarity_short = self._get_rarity_short_name(item.rarity)
             quantity_text = f"({item.quantity}шт) " if item.quantity and item.quantity > 0 else ""
             message_parts.append(f"{emoji}[{rarity_short}] {item.name} {quantity_text}в стоке")
-            
-            # Add availability and price from static database
+
+            # Add only price for Divine+ items
             price = StaticRarityDatabase.get_price(item.name)
             if price:
                 price_formatted = f"{price:,}".replace(",", ".")
-                message_parts.append(f"🛒 Доступно для покупки - 💰Цена: {price_formatted}💎")
+                message_parts.append(f"💰Цена: {price_formatted}💎")
             else:
-                message_parts.append("🛒 Доступно для покупки - 💰Цена: не указана")
+                message_parts.append("💰Цена: не указана")
         
         # Add timestamp at the end (Moscow time)
         moscow_time = datetime.now(self.timezone)
