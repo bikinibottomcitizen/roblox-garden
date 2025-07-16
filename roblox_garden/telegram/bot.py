@@ -114,25 +114,25 @@ class TelegramBot:
     
     async def send_to_updates_channel(self, text: str) -> bool:
         """Send message to the real-time updates channel."""
-        if not self.settings.telegram_updates_channel_id:
+        if not self.settings.effective_updates_channel_id:
             logger.error("Updates channel ID not configured")
             return False
             
         return await self.send_message(
             text=text,
-            channel_id=self.settings.telegram_updates_channel_id,
+            channel_id=self.settings.effective_updates_channel_id,
             parse_mode="HTML"
         )
     
     async def send_to_full_channel(self, text: str) -> bool:
         """Send message to the full reports channel."""
-        if not self.settings.telegram_full_channel_id:
+        if not self.settings.effective_full_channel_id:
             logger.error("Full reports channel ID not configured")
             return False
             
         return await self.send_message(
             text=text,
-            channel_id=self.settings.telegram_full_channel_id,
+            channel_id=self.settings.effective_full_channel_id,
             parse_mode="HTML"
         )
     

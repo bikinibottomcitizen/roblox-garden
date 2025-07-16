@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  roblox-garden:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: roblox-garden-bot
+    restart: unless-stopped
+    environment:
+      # WebSocket settings
+      - WS_URL=${WS_URL:-wss://api.growagarden.com/socket}
+      - RECONNECT_DELAY=${RECONNECT_DELAY:-5}
+      - MAX_RECONNECT_ATTEMPTS=${MAX_RECONNECT_ATTEMPTS:-10}
+      
+      # Telegram settings (required)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - UPDATES_CHANNEL_ID=${UPDATES_CHANNEL_ID}
+      - FULL_CHANNEL_ID=${FULL_CHANNEL_ID}
+      
+      # Update intervals
+      - UPDATE_INTERVAL=${UPDATE_INTERVAL:-300}
+      - FULL_UPDATE_INTERVAL=${FULL_UPDATE_INTERVAL:-300}
+      
+      # Timezone
+      - TIMEZONE=${TIMEZONE:-Europe/Moscow}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-logs/roblox_garden.log}
+    
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+      # Optional: mount config for development
+      # - ./.env:/app/.env:ro
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Redis for caching (if needed in future)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: roblox-garden-redis
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   ports:
+  #     - "6379:6379"
+
+# Optional volumes
+# volumes:
+#   redis_data:
