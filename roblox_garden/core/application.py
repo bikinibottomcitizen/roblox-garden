@@ -260,19 +260,27 @@ class RobloxGardenApp:
             if not filtered_items:
                 logger.info("No items to include in full update - sending empty report")
                 # Send empty report instead of skipping
-                message = self.message_formatter.format_full_report_message(
+                messages = self.message_formatter.format_full_report_message(
                     [],
                     self.current_shop_data.timestamp
                 )
             else:
                 # Format full report message with items
-                message = self.message_formatter.format_full_report_message(
+                messages = self.message_formatter.format_full_report_message(
                     filtered_items,
                     self.current_shop_data.timestamp
                 )
             
-            # Send to full channel
-            success = await self.telegram_bot.send_to_full_channel(message)
+            # Send all messages to full channel
+            success = True
+            for i, message in enumerate(messages, 1):
+                logger.info(f"Sending full report part {i}/{len(messages)}")
+                part_success = await self.telegram_bot.send_to_full_channel(message)
+                if not part_success:
+                    success = False
+                    logger.error(f"Failed to send full report part {i}")
+                else:
+                    logger.info(f"Successfully sent full report part {i}")
             
             if success:
                 item_count = len(filtered_items) if filtered_items else 0
@@ -304,10 +312,10 @@ class RobloxGardenApp:
             if not filtered_items:
                 logger.info("No items to include in initial report")
                 # Send empty report
-                message = self.message_formatter.format_full_report_message([], shop_data.timestamp)
+                messages = self.message_formatter.format_full_report_message([], shop_data.timestamp)
             else:
                 # Format full report message
-                message = self.message_formatter.format_full_report_message(
+                messages = self.message_formatter.format_full_report_message(
                     filtered_items,
                     shop_data.timestamp
                 )
@@ -316,8 +324,16 @@ class RobloxGardenApp:
                 for item in filtered_items:
                     self.known_items[item.id] = item
             
-            # Send to full channel
-            success = await self.telegram_bot.send_to_full_channel(message)
+            # Send all messages to full channel
+            success = True
+            for i, message in enumerate(messages, 1):
+                logger.info(f"Sending initial report part {i}/{len(messages)}")
+                part_success = await self.telegram_bot.send_to_full_channel(message)
+                if not part_success:
+                    success = False
+                    logger.error(f"Failed to send initial report part {i}")
+                else:
+                    logger.info(f"Successfully sent initial report part {i}")
             
             if success:
                 logger.info(f"Initial full report sent with {len(filtered_items)} items")

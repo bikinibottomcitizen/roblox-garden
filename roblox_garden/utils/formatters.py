@@ -54,7 +54,96 @@ class MessageFormatter:
         
         return message
     
-    def format_full_report_message(self, items: List[ShopItem], timestamp: datetime) -> str:
+    def format_full_report_message(self, items: List[ShopItem], timestamp: datetime) -> List[str]:
+        """Format full report message showing ALL Divine+ items, split into multiple messages."""
+        # Get Moscow time
+        moscow_time = timestamp.astimezone(self.timezone)
+        time_str = moscow_time.strftime("%H:%M:%S")
+        date_str = moscow_time.strftime("%Y-%m-%d")
+        
+        # Get all Divine+ items (including those not in stock)
+        all_divine_items = self._get_all_divine_plus_items(items)
+        
+        if not all_divine_items:
+            return ["\n".join([
+                "📊 Полный отчет по магазину",
+                "",
+                "❌ Нет Divine+ товаров в базе данных",
+                "",
+                f"📅 Отчет создан: {date_str} {time_str}",
+                "⏰ Следующее обновление через 5 минут"
+            ])]
+        
+        # Group items by type
+        items_by_type = self._group_items_by_type(all_divine_items)
+        
+        # Split into three messages
+        messages = []
+        
+        # First message: Header + Seeds only
+        message1_parts = [
+            "📊 Полный отчет по магазину (Часть 1/3)",
+            "",
+            f"🔍 Найдено Divine+ предметов: {len(all_divine_items)}",
+            ""
+        ]
+        
+        # Add seeds
+        if ItemType.SEED in items_by_type:
+            message1_parts.append("🌱 Семена:")
+            for item in items_by_type[ItemType.SEED]:
+                status_emoji = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
+                quantity_text = f"({item.quantity}шт)" if item.quantity > 0 else "(0шт)"
+                price_text = f"{item.price:,}".replace(",", ".") if item.price else "не указана"
+                rarity_short = self._get_rarity_short_name(item.rarity)
+                message1_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
+        
+        messages.append("\n".join(message1_parts))
+        
+        # Second message: Gear only
+        message2_parts = [
+            "📊 Полный отчет по магазину (Часть 2/3)",
+            ""
+        ]
+        
+        # Add gear
+        if ItemType.GEAR in items_by_type:
+            message2_parts.append("⚙️ Инструменты:")
+            for item in items_by_type[ItemType.GEAR]:
+                status_emoji = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
+                quantity_text = f"({item.quantity}шт)" if item.quantity > 0 else "(0шт)"
+                price_text = f"{item.price:,}".replace(",", ".") if item.price else "не указана"
+                rarity_short = self._get_rarity_short_name(item.rarity)
+                message2_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
+        
+        messages.append("\n".join(message2_parts))
+        
+        # Third message: Eggs + Footer
+        message3_parts = [
+            "📊 Полный отчет по магазину (Часть 3/3)",
+            ""
+        ]
+        
+        # Add eggs
+        if ItemType.EGG in items_by_type:
+            message3_parts.append("🥚 Яйца:")
+            for item in items_by_type[ItemType.EGG]:
+                status_emoji = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
+                quantity_text = f"({item.quantity}шт)" if item.quantity > 0 else "(0шт)"
+                price_text = f"{item.price:,}".replace(",", ".") if item.price else "не указана"
+                rarity_short = self._get_rarity_short_name(item.rarity)
+                message3_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
+            message3_parts.append("")
+        
+        # Add timestamp and next update info
+        message3_parts.extend([
+            f"📅 Отчет создан: {date_str} {time_str}",
+            "⏰ Следующее обновление через 5 минут"
+        ])
+        
+        messages.append("\n".join(message3_parts))
+        
+        return messages
         """Format full report message showing ALL Divine+ items."""
         # Get Moscow time
         moscow_time = timestamp.astimezone(self.timezone)
@@ -117,7 +206,7 @@ class MessageFormatter:
         
         # Add timestamp and next update info
         message_parts.extend([
-            f"� Отчет создан: {date_str} {time_str}",
+            f"📅 Отчет создан: {date_str} {time_str}",
             "⏰ Следующее обновление через 5 минут"
         ])
         
