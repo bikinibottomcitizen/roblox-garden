@@ -143,8 +143,8 @@ class StaticRarityDatabase:
         "Purple Cabbage": Rarity.COMMON,
         "Strawberry": Rarity.COMMON,
         
-        # Unknown/Special
-        "Bone Blossom": Rarity.UNKNOWN,
+        # Unknown/Special  
+        "Bone Blossom": Rarity.TRANSCENDENT,
     }
     
     # Данные с https://growagardenpro.com/gear/
@@ -165,7 +165,6 @@ class StaticRarityDatabase:
         "Liquid Fertilizer": Rarity.MYTHICAL,
         "Sweet Soaker Sprinkler": Rarity.MYTHICAL,
         "Lightning Rod": Rarity.MYTHICAL,
-        "Godly Sprinkler": Rarity.MYTHICAL,
         "Pollen Radar": Rarity.MYTHICAL,
         "Chocolate Sprinkler": Rarity.MYTHICAL,
         "Nectar Staff": Rarity.MYTHICAL,
@@ -192,19 +191,19 @@ class StaticRarityDatabase:
         "Fertilizer": Rarity.COMMON,
         
         # Unknown (лимитированные и специальные)
-        "Medium Treat": Rarity.UNKNOWN,
-        "Small Treat": Rarity.UNKNOWN,
-        "Medium Toy": Rarity.UNKNOWN,
-        "Small Toy": Rarity.UNKNOWN,
-        "Level Up Lollipop": Rarity.UNKNOWN,
-        "Magnifying Glass": Rarity.UNKNOWN,
-        "Reclaimer": Rarity.UNKNOWN,
-        "Flower Froster Sprinkler": Rarity.UNKNOWN,
-        "Berry Blusher Sprinkler": Rarity.UNKNOWN,
-        "Spice Spritzer Sprinkler": Rarity.UNKNOWN,
-        "Stalk Sprout Sprinkler": Rarity.UNKNOWN,
-        "Tropical Mist Sprinkler": Rarity.UNKNOWN,
-        "Night Staff": Rarity.UNKNOWN,
+        "Medium Treat": Rarity.UNCOMMON,  # Limited pet treats
+        "Small Treat": Rarity.COMMON,
+        "Medium Toy": Rarity.UNCOMMON,    # Limited pet toys
+        "Small Toy": Rarity.COMMON,
+        "Level Up Lollipop": Rarity.PRISMATIC,
+        "Magnifying Glass": Rarity.MYTHICAL,
+        "Reclaimer": Rarity.MYTHICAL,     # High-value gear from growagardenpro
+        "Flower Froster Sprinkler": Rarity.MYTHICAL,  # Limited sprinklers
+        "Berry Blusher Sprinkler": Rarity.MYTHICAL,
+        "Spice Spritzer Sprinkler": Rarity.MYTHICAL,
+        "Stalk Sprout Sprinkler": Rarity.MYTHICAL,
+        "Tropical Mist Sprinkler": Rarity.MYTHICAL,
+        "Night Staff": Rarity.DIVINE,     # Limited staff from growagardenpro
     }
     
     # Данные с https://growagardenpro.com/eggs/
@@ -236,16 +235,16 @@ class StaticRarityDatabase:
         
         # Event (специальные яйца)
         "Bee Egg": Rarity.DIVINE,  # Разрешенное яйцо
-        "Anti Bee Egg": Rarity.UNKNOWN,
-        "Night Egg": Rarity.UNKNOWN,
+        "Anti Bee Egg": Rarity.RARE,      # Craftable from Bee Egg + Honey
+        "Night Egg": Rarity.LEGENDARY,    # Limited event egg
         
         # Limited (лимитированные)
-        "Rainbow Premium Primal Egg": Rarity.UNKNOWN,
-        "Primal Egg": Rarity.UNKNOWN,
-        "Dinosaur Egg": Rarity.UNKNOWN,
+        "Rainbow Premium Primal Egg": Rarity.LEGENDARY,  # Limited version
+        "Primal Egg": Rarity.LEGENDARY,   # Base primal egg 
+        "Dinosaur Egg": Rarity.LEGENDARY, # Prehistoric event egg
         
         # Unknown (ящики и специальные)
-        "Archaeologist Crate": Rarity.UNKNOWN,
+        "Archaeologist Crate": Rarity.RARE,  # Crate with unknown contents
     }
     
     # Данные с https://growagardenpro.com/cosmetics/
@@ -337,10 +336,10 @@ class StaticRarityDatabase:
         "Honey Walkway": Rarity.COMMON,
         
         # Event (специальные предметы)
-        "Cooked Owl": Rarity.UNKNOWN,  # Limited
-        "Long Neck Dino Statue": Rarity.UNKNOWN,
-        "Monster Mash Trophy": Rarity.UNKNOWN,
-        "Volcano": Rarity.UNKNOWN,
+        "Cooked Owl": Rarity.LEGENDARY,   # Limited event cosmetic
+        "Long Neck Dino Statue": Rarity.RARE,  # Event cosmetic
+        "Monster Mash Trophy": Rarity.LEGENDARY,  # Event trophy
+        "Volcano": Rarity.LEGENDARY,      # Event cosmetic
     }
     
     @classmethod
@@ -366,7 +365,7 @@ class StaticRarityDatabase:
     @classmethod
     def get_divine_plus_items(cls) -> set[str]:
         """Получить список предметов Divine редкости и выше."""
-        divine_plus = {Rarity.DIVINE, Rarity.PRISMATIC}
+        divine_plus = {Rarity.DIVINE, Rarity.PRISMATIC, Rarity.TRANSCENDENT}
         items = set()
         
         for rarity_db in [cls.CROPS_RARITY, cls.GEAR_RARITY, cls.EGG_RARITY, cls.COSMETIC_RARITY]:
