@@ -149,6 +149,8 @@ class MessageFormatter:
         from roblox_garden.models.shop import Rarity
         
         rarity_map = {
+            Rarity.TRANSCENDENT: "Transcendent",
+            Rarity.PRISMATIC: "Prismatic",
             Rarity.MYTHICAL: "Mythic",
             Rarity.DIVINE: "Divine", 
             Rarity.LEGENDARY: "Legend",
