@@ -22,6 +22,8 @@ class MessageFormatter:
     
     def format_new_items_message(self, items: List[ShopItem]) -> str:
         """Format message for new items (updates channel) in new format."""
+        from roblox_garden.utils.static_rarity_db import StaticRarityDatabase
+        
         if not items:
             return ""
         
@@ -37,9 +39,10 @@ class MessageFormatter:
             quantity_text = f"({item.quantity}шт) " if item.quantity and item.quantity > 0 else ""
             message_parts.append(f"{emoji}[{rarity_short}] {item.name} {quantity_text}в стоке")
             
-            # Add availability and price
-            if item.price:
-                price_formatted = f"{item.price:,}".replace(",", ".")
+            # Add availability and price from static database
+            price = StaticRarityDatabase.get_price(item.name)
+            if price:
+                price_formatted = f"{price:,}".replace(",", ".")
                 message_parts.append(f"🛒 Доступно для покупки - 💰Цена: {price_formatted}💎")
             else:
                 message_parts.append("🛒 Доступно для покупки - 💰Цена: не указана")
@@ -54,8 +57,10 @@ class MessageFormatter:
         
         return message
     
-    def format_full_report_message(self, items: List[ShopItem], timestamp: datetime) -> List[str]:
-        """Format full report message showing ALL Divine+ items, split into multiple messages."""
+    def format_full_report_message(self, items: List[ShopItem], timestamp: datetime) -> str:
+        """Format full report message showing ALL Divine+ items as single message."""
+        from roblox_garden.utils.static_rarity_db import StaticRarityDatabase
+        
         # Get Moscow time
         moscow_time = timestamp.astimezone(self.timezone)
         time_str = moscow_time.strftime("%H:%M:%S")
@@ -65,24 +70,21 @@ class MessageFormatter:
         all_divine_items = self._get_all_divine_plus_items(items)
         
         if not all_divine_items:
-            return ["\n".join([
+            return "\n".join([
                 "📊 Полный отчет по магазину",
                 "",
                 "❌ Нет Divine+ товаров в базе данных",
                 "",
                 f"📅 Отчет создан: {date_str} {time_str}",
                 "⏰ Следующее обновление через 5 минут"
-            ])]
+            ])
         
         # Group items by type
         items_by_type = self._group_items_by_type(all_divine_items)
         
-        # Split into three messages
-        messages = []
-        
-        # First message: Header + Seeds only
-        message1_parts = [
-            "📊 Полный отчет по магазину (Часть 1/3)",
+        # Build single message
+        message_parts = [
+            "📊 Полный отчет по магазину",
             "",
             f"🔍 Найдено Divine+ предметов: {len(all_divine_items)}",
             ""
@@ -90,60 +92,50 @@ class MessageFormatter:
         
         # Add seeds
         if ItemType.SEED in items_by_type:
-            message1_parts.append("🌱 Семена:")
+            message_parts.append("🌱 Семена:")
             for item in items_by_type[ItemType.SEED]:
                 status_emoji = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
                 quantity_text = f"({item.quantity}шт)" if item.quantity > 0 else "(0шт)"
-                price_text = f"{item.price:,}".replace(",", ".") if item.price else "не указана"
+                # Get price from static database
+                price = StaticRarityDatabase.get_price(item.name)
+                price_text = f"{price:,}".replace(",", ".") if price else "не указана"
                 rarity_short = self._get_rarity_short_name(item.rarity)
-                message1_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
-        
-        messages.append("\n".join(message1_parts))
-        
-        # Second message: Gear only
-        message2_parts = [
-            "📊 Полный отчет по магазину (Часть 2/3)",
-            ""
-        ]
+                message_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
+            message_parts.append("")
         
         # Add gear
         if ItemType.GEAR in items_by_type:
-            message2_parts.append("⚙️ Инструменты:")
+            message_parts.append("⚙️ Инструменты:")
             for item in items_by_type[ItemType.GEAR]:
                 status_emoji = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
                 quantity_text = f"({item.quantity}шт)" if item.quantity > 0 else "(0шт)"
-                price_text = f"{item.price:,}".replace(",", ".") if item.price else "не указана"
+                # Get price from static database
+                price = StaticRarityDatabase.get_price(item.name)
+                price_text = f"{price:,}".replace(",", ".") if price else "не указана"
                 rarity_short = self._get_rarity_short_name(item.rarity)
-                message2_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
-        
-        messages.append("\n".join(message2_parts))
-        
-        # Third message: Eggs + Footer
-        message3_parts = [
-            "📊 Полный отчет по магазину (Часть 3/3)",
-            ""
-        ]
+                message_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
+            message_parts.append("")
         
         # Add eggs
         if ItemType.EGG in items_by_type:
-            message3_parts.append("🥚 Яйца:")
+            message_parts.append("🥚 Яйца:")
             for item in items_by_type[ItemType.EGG]:
                 status_emoji = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
                 quantity_text = f"({item.quantity}шт)" if item.quantity > 0 else "(0шт)"
-                price_text = f"{item.price:,}".replace(",", ".") if item.price else "не указана"
+                # Get price from static database
+                price = StaticRarityDatabase.get_price(item.name)
+                price_text = f"{price:,}".replace(",", ".") if price else "не указана"
                 rarity_short = self._get_rarity_short_name(item.rarity)
-                message3_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
-            message3_parts.append("")
+                message_parts.append(f"• {item.name} [{rarity_short}] {quantity_text} - {price_text}💎 ({status_emoji})")
+            message_parts.append("")
         
         # Add timestamp and next update info
-        message3_parts.extend([
+        message_parts.extend([
             f"📅 Отчет создан: {date_str} {time_str}",
             "⏰ Следующее обновление через 5 минут"
         ])
         
-        messages.append("\n".join(message3_parts))
-        
-        return messages
+        return "\n".join(message_parts)
         """Format full report message showing ALL Divine+ items."""
         # Get Moscow time
         moscow_time = timestamp.astimezone(self.timezone)
@@ -218,9 +210,10 @@ class MessageFormatter:
         from roblox_garden.utils.static_rarity_db import StaticRarityDatabase
         
         divine_plus_rarities = {
-            Rarity.DIVINE,
+            Rarity.LEGENDARY,  # Include Legendary for Medium Toy/Treat
             Rarity.MYTHICAL,
             Rarity.MYTHIC,
+            Rarity.DIVINE,
             Rarity.PRISMATIC,
             Rarity.TRANSCENDENT,
             Rarity.CELESTIAL
@@ -236,8 +229,10 @@ class MessageFormatter:
         for item_name, rarity in StaticRarityDatabase.CROPS_RARITY.items():
             if rarity in divine_plus_rarities:
                 if item_name in current_items_by_name:
-                    # Use current item data
-                    all_divine_items.append(current_items_by_name[item_name])
+                    # Use current item data but get price from database
+                    current_item = current_items_by_name[item_name]
+                    current_item.price = StaticRarityDatabase.get_price(item_name)
+                    all_divine_items.append(current_item)
                 else:
                     # Create item with 0 quantity and out of stock
                     all_divine_items.append(ShopItem(
@@ -246,7 +241,7 @@ class MessageFormatter:
                         type=ItemType.SEED,
                         rarity=rarity,
                         quantity=0,
-                        price=None,
+                        price=StaticRarityDatabase.get_price(item_name),
                         in_stock=False
                     ))
         
@@ -254,7 +249,9 @@ class MessageFormatter:
         for item_name, rarity in StaticRarityDatabase.GEAR_RARITY.items():
             if rarity in divine_plus_rarities:
                 if item_name in current_items_by_name:
-                    all_divine_items.append(current_items_by_name[item_name])
+                    current_item = current_items_by_name[item_name]
+                    current_item.price = StaticRarityDatabase.get_price(item_name)
+                    all_divine_items.append(current_item)
                 else:
                     all_divine_items.append(ShopItem(
                         id=f"gear_{item_name.replace(' ', '_').lower()}",
@@ -262,7 +259,7 @@ class MessageFormatter:
                         type=ItemType.GEAR,
                         rarity=rarity,
                         quantity=0,
-                        price=None,
+                        price=StaticRarityDatabase.get_price(item_name),
                         in_stock=False
                     ))
         
@@ -270,7 +267,9 @@ class MessageFormatter:
         for item_name, rarity in StaticRarityDatabase.EGG_RARITY.items():
             if rarity in divine_plus_rarities:
                 if item_name in current_items_by_name:
-                    all_divine_items.append(current_items_by_name[item_name])
+                    current_item = current_items_by_name[item_name]
+                    current_item.price = StaticRarityDatabase.get_price(item_name)
+                    all_divine_items.append(current_item)
                 else:
                     all_divine_items.append(ShopItem(
                         id=f"egg_{item_name.replace(' ', '_').lower()}",
@@ -278,7 +277,7 @@ class MessageFormatter:
                         type=ItemType.EGG,
                         rarity=rarity,
                         quantity=0,
-                        price=None,
+                        price=StaticRarityDatabase.get_price(item_name),
                         in_stock=False
                     ))
         
