@@ -1,5 +1,4 @@
 # Production docker-compose with secrets and monitoring
-version: '3.8'
 
 services:
   roblox-garden:
@@ -43,7 +42,7 @@ services:
     
     # Enhanced health check
     healthcheck:
-      test: ["/app/health_check.sh"]
+      test: ["CMD", "/app/health_check.sh"]
       interval: 30s
       timeout: 10s
       retries: 3
