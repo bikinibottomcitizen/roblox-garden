@@ -32,9 +32,9 @@ class MessageFormatter:
             # Get emoji based on type
             emoji = self._get_type_emoji(item.type)
             
-            # Format: 🥚[Mythic] Mythical Egg в стоке
+            # Format: 🥚[Mythic] **Mythical Egg** в стоке
             rarity_short = self._get_rarity_short_name(item.rarity)
-            message_parts.append(f"{emoji}[{rarity_short}] {item.name} в стоке")
+            message_parts.append(f"{emoji}[{rarity_short}] **{item.name}** в стоке")
             message_parts.append("🛒 Доступно для покупки")
         
         # Add timestamp at the end (Moscow time)
@@ -71,7 +71,7 @@ class MessageFormatter:
             message_parts.append("🌱 Seeds:")
             for item in items_by_type[ItemType.SEED]:
                 status = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
-                message_parts.append(f"  ✨ {item.name} ({item.quantity}шт) ({item.rarity.value})")
+                message_parts.append(f"  ✨ **{item.name}** ({item.quantity}шт) ({item.rarity.value})")
                 message_parts.append(f"    {status}")
             message_parts.append("")
         
@@ -79,7 +79,7 @@ class MessageFormatter:
             message_parts.append("⚙️ Gears:")
             for item in items_by_type[ItemType.GEAR]:
                 status = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
-                message_parts.append(f"  ✨ {item.name} ({item.quantity}шт) ({item.rarity.value})")
+                message_parts.append(f"  ✨ **{item.name}** ({item.quantity}шт) ({item.rarity.value})")
                 message_parts.append(f"    {status}")
             message_parts.append("")
         
@@ -88,7 +88,7 @@ class MessageFormatter:
             for item in items_by_type[ItemType.EGG]:
                 status = "✅ В наличии" if item.in_stock else "❌ Отсутствует"
                 rarity_indicator = "🔴" if item.rarity.value in ["Mythic", "Mythical"] else "✨"
-                message_parts.append(f"  {rarity_indicator} {item.name} ({item.quantity}шт) ({item.rarity.value})")
+                message_parts.append(f"  {rarity_indicator} **{item.name}** ({item.quantity}шт) ({item.rarity.value})")
                 message_parts.append(f"    {status}")
             message_parts.append("")
         
