@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     """Application settings with environment variable support."""
     
     # Telegram Bot Configuration
-    telegram_bot_token: str = Field(alias="TELEGRAM_BOT_TOKEN")
-    telegram_full_channel_id: str = Field(alias="TELEGRAM_FULL_CHANNEL_ID")
-    telegram_updates_channel_id: str = Field(alias="TELEGRAM_UPDATES_CHANNEL_ID")
+    telegram_bot_token: str = Field(default="your_bot_token_here", alias="TELEGRAM_BOT_TOKEN")
+    telegram_full_channel_id: str = Field(default="your_full_channel_id", alias="TELEGRAM_FULL_CHANNEL_ID")
+    telegram_updates_channel_id: str = Field(default="your_updates_channel_id", alias="TELEGRAM_UPDATES_CHANNEL_ID")
     
     # WebSocket Configuration
     roblox_api_base_url: str = Field(

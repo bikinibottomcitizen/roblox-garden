@@ -192,12 +192,12 @@ class RobloxGardenApp:
             message = self.message_formatter.format_new_items_message(new_items)
             
             # Send to updates channel
-            await self.telegram_bot.send_message(
-                message,
-                self.settings.telegram_updates_channel_id
-            )
+            success = await self.telegram_bot.send_to_updates_channel(message)
             
-            logger.info(f"Sent new items update for {len(new_items)} items")
+            if success:
+                logger.info(f"Sent new items update for {len(new_items)} items")
+            else:
+                logger.error("Failed to send new items update")
             
         except Exception as e:
             logger.error(f"Failed to send new items update: {e}")
@@ -223,12 +223,12 @@ class RobloxGardenApp:
             )
             
             # Send to full channel
-            await self.telegram_bot.send_message(
-                message,
-                self.settings.telegram_full_channel_id
-            )
+            success = await self.telegram_bot.send_to_full_channel(message)
             
-            logger.info(f"Sent full update with {len(filtered_items)} items")
+            if success:
+                logger.info(f"Sent full update with {len(filtered_items)} items")
+            else:
+                logger.error("Failed to send full update")
             
         except Exception as e:
             logger.error(f"Failed to send full update: {e}")

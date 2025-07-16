@@ -6,17 +6,7 @@ from enum import Enum
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-try:
-    from pydantic import BaseModel, Field
-except ImportError:
-    # Fallback for development without pydantic installed
-    class BaseModel:
-        def __init__(self, **kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-    
-    def Field(default=None, **kwargs):
-        return default
+from pydantic import BaseModel, Field
 
 
 class ItemType(str, Enum):

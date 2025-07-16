@@ -23,7 +23,7 @@ except ImportError:
             await asyncio.sleep(1)
             raise StopAsyncIteration
     
-    class websockets:
+    class MockWebsockets:
         @staticmethod
         async def connect(uri):
             return MockWebSocket()
@@ -187,6 +187,14 @@ class WebSocketClient:
                 logger.error(f"❌ Ошибка в цикле мониторинга: {e}")
                 await asyncio.sleep(10)  # Wait before retry
     
+    async def fetch_shop_data(self) -> Optional[ShopData]:
+        """Public method to fetch shop data once."""
+        if not self.session:
+            # Initialize session if not already done
+            await self.connect()
+        
+        return await self._fetch_shop_data()
+    
     async def _fetch_shop_data(self) -> Optional[ShopData]:
         """Fetch shop data from HTTP API."""
         if not self.session:
@@ -210,7 +218,7 @@ class WebSocketClient:
         """Parse shop data from API response using rarity parser."""
         items = []
         
-        # Parse different item categories based on real API structure
+        # Parse only relevant item categories (seeds, gear, eggs)
         if 'seeds' in data and isinstance(data['seeds'], list):
             items.extend(self._parse_items(data['seeds'], ItemType.SEED))
         
@@ -220,11 +228,7 @@ class WebSocketClient:
         if 'eggs' in data and isinstance(data['eggs'], list):
             items.extend(self._parse_items(data['eggs'], ItemType.EGG))
             
-        if 'honey' in data and isinstance(data['honey'], list):
-            items.extend(self._parse_items(data['honey'], ItemType.HONEY))
-            
-        if 'cosmetics' in data and isinstance(data['cosmetics'], list):
-            items.extend(self._parse_items(data['cosmetics'], ItemType.COSMETIC))
+        # Игнорируем honey и cosmetics - они не нужны для фильтрации
         
         # Create shop data
         shop_data = ShopData(
