@@ -121,7 +121,7 @@ class TelegramBot:
         return await self.send_message(
             text=text,
             channel_id=self.settings.telegram_updates_channel_id,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     
     async def send_to_full_channel(self, text: str) -> bool:
@@ -133,7 +133,7 @@ class TelegramBot:
         return await self.send_message(
             text=text,
             channel_id=self.settings.telegram_full_channel_id,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     
     async def test_connection(self) -> bool:

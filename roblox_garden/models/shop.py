@@ -70,12 +70,23 @@ class ShopItem(BaseModel):
         return "✨"
     
     def format_for_telegram(self) -> str:
-        """Format item for Telegram message."""
+        """Format item for Telegram message with bold formatting."""
         emoji = self.get_emoji()
-        rarity_color = self.get_rarity_color()
+        
+        # Get short rarity name for consistency
+        rarity_map = {
+            Rarity.MYTHICAL: "Mythic",
+            Rarity.DIVINE: "Divine", 
+            Rarity.LEGENDARY: "Legend",
+            Rarity.EPIC: "Epic",
+            Rarity.RARE: "Rare",
+            Rarity.UNCOMMON: "Uncommon",
+            Rarity.COMMON: "Common"
+        }
+        rarity_short = rarity_map.get(self.rarity, self.rarity.value)
         
         return (
-            f"{emoji}[{self.rarity.value}] {self.name} в стоке\n"
+            f"**{emoji}[{rarity_short}] {self.name} в стоке**\n"
             f"🛒 Доступно для покупки"
         )
 
