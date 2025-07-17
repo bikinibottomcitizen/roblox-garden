@@ -25,10 +25,10 @@ class StaticRarityDatabase:
     # Инструменты (только указанные пользователем)
     GEAR_RARITY = {
         "Friendship Pot": Rarity.DIVINE,
-        "Godly Sprinkler": Rarity.DIVINE,
+        "Godly Sprinkler": Rarity.MYTHICAL,
         "Level Up Lollipop": Rarity.PRISMATIC,
-        "Master Sprinkler": Rarity.DIVINE,
-        "Tanning Mirror": Rarity.DIVINE,
+        "Master Sprinkler": Rarity.MYTHICAL,
+        "Tanning Mirror": Rarity.MYTHICAL,
         "Medium Toy": Rarity.LEGENDARY,
         "Medium Treat": Rarity.LEGENDARY,
     }

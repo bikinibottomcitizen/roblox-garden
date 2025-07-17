@@ -165,29 +165,36 @@ class RobloxGardenApp:
         logger.info("WebSocket monitoring loop ended")
     
     async def _scheduler_loop(self) -> None:
-        """Scheduler loop for periodic full updates at exact time intervals."""
-        logger.info(f"Starting scheduler loop (full reports every {self.settings.full_report_interval} minutes at :00, :05, :10, etc.)")
+        """Scheduler loop for periodic full updates with offset to ensure fresh stock data."""
+        stock_refresh_offset = 1  # Run reports 1 minute after each interval to ensure fresh stock
+        logger.info(f"Starting scheduler loop (full reports every {self.settings.full_report_interval} minutes at :01, :06, :11, etc.)")
         
         while self.is_running and not self._shutdown_event.is_set():
             try:
-                # Calculate next scheduled time (every N minutes at :00, :05, :10, etc.)
+                # Calculate next scheduled time (every N minutes at :01, :06, :11, etc.)
                 now = datetime.now()
                 current_minute = now.minute
                 interval = self.settings.full_report_interval
                 
-                # Calculate next target minute
-                next_minute = ((current_minute // interval) + 1) * interval
+                # Calculate next target minute with offset built in
+                # Find the next base interval minute (:00, :05, :10, etc.)
+                next_base_minute = ((current_minute // interval) + 1) * interval
+                
+                # Add the offset to get the actual schedule (:01, :06, :11, etc.)
+                next_minute = next_base_minute + stock_refresh_offset
+                
                 if next_minute >= 60:
-                    next_minute = 0
+                    next_minute = next_minute - 60
                     next_time = now.replace(hour=(now.hour + 1) % 24, minute=next_minute, second=0, microsecond=0)
                 else:
                     next_time = now.replace(minute=next_minute, second=0, microsecond=0)
                 
                 # If we're past the target time, move to next interval
                 if next_time <= now:
-                    next_minute = ((next_minute // interval) + 1) * interval
+                    next_base_minute = ((next_base_minute // interval) + 1) * interval
+                    next_minute = next_base_minute + stock_refresh_offset
                     if next_minute >= 60:
-                        next_minute = 0
+                        next_minute = next_minute - 60
                         next_time = next_time.replace(hour=(next_time.hour + 1) % 24, minute=next_minute)
                     else:
                         next_time = next_time.replace(minute=next_minute)
@@ -195,7 +202,7 @@ class RobloxGardenApp:
                 # Calculate sleep time
                 sleep_seconds = (next_time - now).total_seconds()
                 
-                logger.info(f"Next full report scheduled at {next_time.strftime('%H:%M')} (in {sleep_seconds:.0f} seconds)")
+                logger.info(f"Next full report scheduled at {next_time.strftime('%H:%M:%S')} (in {sleep_seconds:.0f} seconds)")
                 
                 # Sleep until next scheduled time
                 await asyncio.sleep(sleep_seconds)
