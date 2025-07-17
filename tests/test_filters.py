@@ -49,7 +49,7 @@ class TestItemFilters(unittest.TestCase):
             id="4",
             name="Master Sprinkler",
             type=ItemType.GEAR,
-            rarity=Rarity.DIVINE,
+            rarity=Rarity.MYTHICAL,
             quantity=1,
             in_stock=True
         )
