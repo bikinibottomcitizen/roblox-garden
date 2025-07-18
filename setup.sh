@@ -52,37 +52,51 @@ echo "✅ Директории созданы"
 # 4. Проверка файла .env
 print_status "Проверка конфигурации"
 if [[ ! -f ".env" ]]; then
-    echo "❌ Файл .env не найден!"
-    echo "Создайте файл .env с настройками:"
-    echo ""
-    echo "# Telegram Bot Configuration"
-    echo "TELEGRAM_BOT_TOKEN=your_bot_token_here"
-    echo "TELEGRAM_FULL_CHANNEL_ID=your_full_channel_id"
-    echo "TELEGRAM_UPDATES_CHANNEL_ID=your_updates_channel_id"
-    echo ""
-    echo "# WebSocket Configuration"
-    echo "ROBLOX_API_BASE_URL=https://gagapi.onrender.com"
-    echo "WEBSOCKET_RECONNECT_DELAY=5"
-    echo "SHOP_UPDATE_INTERVAL=300"
-    echo "SHOP_CHECK_INTERVAL=10"
-    echo ""
-    echo "# Report Configuration"
-    echo "FULL_REPORT_INTERVAL=5"
-    echo ""
-    echo "# Logging"
-    echo "LOG_LEVEL=INFO"
-    echo "LOG_FILE=logs/roblox_garden.log"
-    echo ""
-    echo "# Timezone"
-    echo "TIMEZONE=Europe/Moscow"
-    echo ""
-    echo "Затем запустите скрипт снова."
-    exit 1
+    echo "❌ Файл .env не найден! Создаем новый..."
+    cp .env.example .env
+    echo "✅ Файл .env создан из шаблона"
 fi
 
 # Проверка токена бота
 if ! grep -q "TELEGRAM_BOT_TOKEN=" .env || grep -q "your_bot_token_here" .env; then
-    echo "⚠️  Не настроен токен Telegram бота в .env"
+    echo "⚠️  Не настроен токен Telegram бота"
+    echo ""
+    echo "🤖 Настройка Telegram бота"
+    echo "════════════════════════════"
+    echo ""
+    echo "1. Перейдите к @BotFather в Telegram"
+    echo "2. Отправьте команду /newbot"
+    echo "3. Следуйте инструкциям для создания бота"
+    echo "4. Скопируйте токен из сообщения BotFather"
+    echo ""
+    echo "Токен выглядит примерно так: 1234567890:ABCdefGhIjKlMnOpQrStUvWxYz"
+    echo ""
+    
+    # Запрос токена
+    while true; do
+        read -p "🔑 Введите токен вашего бота: " bot_token
+        
+        if [[ -z "$bot_token" ]]; then
+            echo "❌ Токен не может быть пустым!"
+            continue
+        fi
+        
+        if [[ ! "$bot_token" =~ ^[0-9]+:.+ ]]; then
+            echo "❌ Неверный формат токена! Должен быть вида: 1234567890:ABC..."
+            continue
+        fi
+        
+        break
+    done
+    
+    # Обновление токена в .env
+    if grep -q "TELEGRAM_BOT_TOKEN=" .env; then
+        sed -i.bak "s/TELEGRAM_BOT_TOKEN=.*/TELEGRAM_BOT_TOKEN=$bot_token/" .env
+    else
+        echo "TELEGRAM_BOT_TOKEN=$bot_token" >> .env
+    fi
+    
+    echo "✅ Токен сохранен в .env"
     echo ""
     echo "🔧 Запускаем мастер настройки каналов..."
     echo ""
