@@ -195,13 +195,24 @@ class RobloxGardenApp:
                 # Calculate sleep time
                 sleep_seconds = (next_time - now).total_seconds()
                 
-                logger.info(f"Next full report scheduled at {next_time.strftime('%H:%M')} (in {sleep_seconds:.0f} seconds)")
+                logger.info(f"Next full report scheduled at {next_time.strftime('%H:%M:%S')} (in {sleep_seconds:.1f} seconds)")
                 
                 # Sleep until next scheduled time
                 await asyncio.sleep(sleep_seconds)
                 
+                # Wait for exact time to avoid sending reports a few seconds early
+                while datetime.now() < next_time:
+                    await asyncio.sleep(0.1)  # Small delay to hit exact time
+                
+                # Additional delay to ensure data has been updated after stock refresh
+                delay_seconds = self.settings.report_delay_after_stock_update
+                logger.info(f"⏰ Waiting additional {delay_seconds} seconds for data to update after stock refresh...")
+                await asyncio.sleep(delay_seconds)
+                
                 # Send full report if we're still running
                 if self.is_running and not self._shutdown_event.is_set():
+                    actual_time = datetime.now()
+                    logger.info(f"Sending full report at {actual_time.strftime('%H:%M:%S')} ({delay_seconds}s after scheduled time)")
                     await self._send_full_update()
                 
             except Exception as e:
@@ -278,6 +289,10 @@ class RobloxGardenApp:
     async def _send_full_update(self) -> None:
         """Send full shop report to the full channel with fresh data."""
         try:
+            # Log exact time when report creation starts
+            report_start_time = datetime.now()
+            logger.info(f"🕐 Starting full report creation at {report_start_time.strftime('%H:%M:%S.%f')[:-3]}")
+            
             # Always fetch fresh data for full reports to avoid stale data
             logger.info("Fetching fresh shop data for full report")
             fresh_shop_data = await self.websocket_client.fetch_shop_data()
@@ -315,12 +330,15 @@ class RobloxGardenApp:
                 )
             
             # Send message to full channel
-            logger.info(f"Sending full report with data timestamp {data_time}")
+            send_time = datetime.now()
+            logger.info(f"📤 Sending full report at {send_time.strftime('%H:%M:%S.%f')[:-3]} with data timestamp {data_time}")
             success = await self.telegram_bot.send_to_full_channel(message)
             
             if success:
                 item_count = len(filtered_items) if filtered_items else 0
-                logger.info(f"✅ Sent full update with {item_count} items using data from {data_time}")
+                complete_time = datetime.now()
+                duration = (complete_time - report_start_time).total_seconds()
+                logger.info(f"✅ Full report completed at {complete_time.strftime('%H:%M:%S.%f')[:-3]} ({duration:.2f}s) with {item_count} items")
             else:
                 logger.error("❌ Failed to send full update")
             

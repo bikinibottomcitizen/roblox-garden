@@ -56,6 +56,13 @@ class Settings(BaseSettings):
         description="Interval in minutes for sending full reports (0:00, 0:05, 0:10, etc.)"
     )
     
+    # Delay after stock update to ensure fresh data
+    report_delay_after_stock_update: int = Field(
+        default=30,
+        alias="REPORT_DELAY_AFTER_STOCK_UPDATE",
+        description="Seconds to wait after scheduled time to ensure data is updated"
+    )
+    
     # Timezone
     timezone: str = Field(default="Europe/Moscow", alias="TIMEZONE")
     
