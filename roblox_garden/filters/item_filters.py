@@ -108,7 +108,8 @@ class RobloxGardenFilter:
     EXCLUDED_GEAR_NAMES = {
         "Harvest Tool",
         "Favorite Tool", 
-        "Cleaning Spray"
+        "Cleaning Spray",
+        "Godly Sprinkler"  # Убираем из отображения
     }
     
     # Allowed egg names
