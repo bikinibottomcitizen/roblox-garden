@@ -46,7 +46,17 @@ class ChannelIdFinder:
     async def get_updates(self) -> List[Update]:
         """Получить последние обновления."""
         try:
-            updates = await self.bot.get_updates(limit=100, timeout=1)
+            # Сначала очищаем старые обновления
+            await self.bot.delete_webhook(drop_pending_updates=True)
+            
+            # Получаем свежие обновления
+            updates = await self.bot.get_updates(offset=-1, limit=100, timeout=10)
+            
+            if updates:
+                # Подтверждаем получение обновлений
+                last_update_id = updates[-1].update_id
+                await self.bot.get_updates(offset=last_update_id + 1, limit=1, timeout=1)
+            
             return updates
         except Exception as e:
             print(f"❌ Ошибка получения обновлений: {e}")
@@ -106,42 +116,189 @@ class ChannelIdFinder:
         """Найти все каналы и группы, где есть бот."""
         print("🔍 Поиск каналов...")
         
-        # Получить обновления
-        updates = await self.get_updates()
+        # Попробовать получить обновления
+        try:
+            updates = await self.get_updates()
+        except Exception as e:
+            print(f"❌ Ошибка получения обновлений: {e}")
+            updates = []
         
+        # Если нет обновлений, предложить ручной ввод
         if not updates:
-            print("⚠️ Нет последних сообщений. Отправьте боту сообщение или добавьте в каналы.")
-            return {'channels': [], 'groups': [], 'private': []}
+            print("⚠️ Нет последних сообщений.")
+            print("� Для автоматического поиска:")
+            print("   1. Добавьте бота в каналы как администратора")
+            print("   2. Отправьте команду /start боту в личные сообщения")
+            print("   3. Или отправьте любое сообщение в каналы")
+            print()
+            
+            choice = input("Продолжить ручной ввод ID каналов? (y/N): ").strip().lower()
+            if choice in ['y', 'yes', 'да']:
+                return await self.manual_channel_input()
+            else:
+                return {'channels': [], 'groups': [], 'private': []}
         
-        # Собрать уникальные чаты
+        # Собрать уникальные чаты из обновлений
         chats = {}
-        for update in updates:
+        print(f"📨 Найдено {len(updates)} обновлений, анализирую...")
+        
+        for i, update in enumerate(updates):
+            chat = None
+            update_type = "неизвестно"
+            
             if update.message and update.message.chat:
                 chat = update.message.chat
-                chats[chat.id] = chat
+                update_type = f"сообщение от {update.message.from_user.first_name if update.message.from_user else 'неизвестно'}"
             elif update.channel_post and update.channel_post.chat:
                 chat = update.channel_post.chat
+                update_type = "пост в канале"
+            elif hasattr(update, 'my_chat_member') and update.my_chat_member:
+                chat = update.my_chat_member.chat
+                update_type = "изменение статуса бота"
+            elif hasattr(update, 'chat_member') and update.chat_member:
+                chat = update.chat_member.chat
+                update_type = "изменение участника"
+            elif hasattr(update, 'edited_message') and update.edited_message:
+                chat = update.edited_message.chat
+                update_type = "редактирование сообщения"
+            elif hasattr(update, 'edited_channel_post') and update.edited_channel_post:
+                chat = update.edited_channel_post.chat
+                update_type = "редактирование поста канала"
+            
+            if chat:
                 chats[chat.id] = chat
+                print(f"  {i+1}. {chat.type}: {chat.title or 'Без названия'} ({update_type})")
+            else:
+                print(f"  {i+1}. Пропущено обновление: {type(update).__name__}")
+        
+        print(f"\n🔍 Найдено уникальных чатов: {len(chats)}")
+        for chat_id, chat in chats.items():
+            print(f"  • {chat.type}: {chat.title or 'Без названия'} (ID: {chat_id})")
+        
+        if not chats:
+            print("❌ В обновлениях нет информации о чатах.")
+            choice = input("Использовать ручной ввод ID каналов? (y/N): ").strip().lower()
+            if choice in ['y', 'yes', 'да']:
+                return await self.manual_channel_input()
+            else:
+                return {'channels': [], 'groups': [], 'private': []}
         
         # Анализировать каждый чат
         channels = []
         groups = []
         private = []
         
+        print(f"📋 Анализирую {len(chats)} найденных чатов...")
+        
         for chat in chats.values():
-            chat_info = await self.analyze_chat(chat)
-            
-            if chat.type == 'channel':
-                channels.append(chat_info)
-            elif chat.type in ['group', 'supergroup']:
-                groups.append(chat_info)
-            elif chat.type == 'private':
-                private.append(chat_info)
+            try:
+                chat_info = await self.analyze_chat(chat)
+                
+                if chat.type == 'channel':
+                    channels.append(chat_info)
+                elif chat.type in ['group', 'supergroup']:
+                    groups.append(chat_info)
+                elif chat.type == 'private':
+                    private.append(chat_info)
+                    
+            except Exception as e:
+                print(f"⚠️ Ошибка анализа чата {chat.id}: {e}")
+                continue
         
         return {
             'channels': channels,
             'groups': groups,
             'private': private
+        }
+    
+    async def manual_channel_input(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Ручной ввод ID каналов."""
+        print("\n📋 РУЧНОЙ ВВОД ID КАНАЛОВ")
+        print("=" * 30)
+        print()
+        print("💡 Как получить ID канала:")
+        print("   1. Откройте Telegram Web (web.telegram.org)")
+        print("   2. Перейдите в канал")
+        print("   3. Скопируйте числа из URL после 'c/' (например: 1234567890)")
+        print("   4. Добавьте -100 в начало (получится: -1001234567890)")
+        print()
+        
+        channels = []
+        
+        # Ввод полного канала
+        print("📺 ПОЛНЫЙ КАНАЛ (для отчетов каждые 5 минут)")
+        while True:
+            full_channel = input("ID полного канала: ").strip()
+            if not full_channel:
+                print("⚠️ Пропуск полного канала")
+                break
+                
+            # Форматирование ID
+            if full_channel.isdigit():
+                full_channel = f"-100{full_channel}"
+            
+            if not full_channel.startswith('-'):
+                print("❌ ID должен начинаться с - или быть числом")
+                continue
+            
+            # Проверить доступ к каналу
+            try:
+                chat = await self.bot.get_chat(full_channel)
+                channels.append({
+                    'id': chat.id,
+                    'type': chat.type,
+                    'title': chat.title or "Полный канал",
+                    'username': chat.username,
+                    'purpose': 'full',
+                    'bot_can_post': True
+                })
+                print(f"✅ Полный канал найден: {chat.title} ({chat.id})")
+                break
+            except Exception as e:
+                print(f"❌ Ошибка доступа к каналу {full_channel}: {e}")
+                retry = input("Попробовать другой ID? (y/N): ").strip().lower()
+                if retry not in ['y', 'yes', 'да']:
+                    break
+        
+        # Ввод канала обновлений
+        print("\n📱 КАНАЛ ОБНОВЛЕНИЙ (для новых предметов)")
+        while True:
+            updates_channel = input("ID канала обновлений: ").strip()
+            if not updates_channel:
+                print("⚠️ Пропуск канала обновлений")
+                break
+                
+            # Форматирование ID
+            if updates_channel.isdigit():
+                updates_channel = f"-100{updates_channel}"
+            
+            if not updates_channel.startswith('-'):
+                print("❌ ID должен начинаться с - или быть числом")
+                continue
+            
+            # Проверить доступ к каналу
+            try:
+                chat = await self.bot.get_chat(updates_channel)
+                channels.append({
+                    'id': chat.id,
+                    'type': chat.type,
+                    'title': chat.title or "Канал обновлений",
+                    'username': chat.username,
+                    'purpose': 'updates',
+                    'bot_can_post': True
+                })
+                print(f"✅ Канал обновлений найден: {chat.title} ({chat.id})")
+                break
+            except Exception as e:
+                print(f"❌ Ошибка доступа к каналу {updates_channel}: {e}")
+                retry = input("Попробовать другой ID? (y/N): ").strip().lower()
+                if retry not in ['y', 'yes', 'да']:
+                    break
+        
+        return {
+            'channels': channels,
+            'groups': [],
+            'private': []
         }
     
     async def test_channel_access(self, channel_id: str) -> Dict[str, Any]:
@@ -181,6 +338,60 @@ class ChannelIdFinder:
     async def close(self):
         """Закрыть соединение."""
         await self.bot.session.close()
+    
+    async def _direct_channel_input(self):
+        """Прямой ввод ID каналов без проверки через обновления."""
+        print("📋 ПРЯМОЙ ВВОД ID КАНАЛОВ")
+        print("=" * 30)
+        
+        updates_channel = None
+        full_channel = None
+        
+        # Ввод канала обновлений
+        while not updates_channel:
+            channel_id = input("\n📱 ID канала для ОБНОВЛЕНИЙ: ").strip()
+            if not channel_id:
+                print("❌ ID не может быть пустым")
+                continue
+                
+            if channel_id.isdigit():
+                channel_id = f"-100{channel_id}"
+            
+            try:
+                chat = await self.bot.get_chat(channel_id)
+                updates_channel = {
+                    'id': chat.id,
+                    'title': chat.title or "Канал обновлений",
+                    'type': chat.type
+                }
+                print(f"✅ Канал обновлений найден: {chat.title}")
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
+                continue
+        
+        # Ввод полного канала
+        while not full_channel:
+            channel_id = input("\n📺 ID канала для ПОЛНЫХ ОТЧЕТОВ: ").strip()
+            if not channel_id:
+                print("❌ ID не может быть пустым")
+                continue
+                
+            if channel_id.isdigit():
+                channel_id = f"-100{channel_id}"
+            
+            try:
+                chat = await self.bot.get_chat(channel_id)
+                full_channel = {
+                    'id': chat.id,
+                    'title': chat.title or "Полный канал",
+                    'type': chat.type
+                }
+                print(f"✅ Полный канал найден: {chat.title}")
+            except Exception as e:
+                print(f"❌ Ошибка: {e}")
+                continue
+        
+        return updates_channel, full_channel
 
 
 def print_chat_info(chat_info: Dict[str, Any], index: int):
@@ -233,13 +444,14 @@ async def interactive_setup(finder: ChannelIdFinder):
             all_chats.append(('group', group))
     
     if not all_chats:
-        print("\n❌ Каналы не найдены!")
-        print("\n📋 Что нужно сделать:")
-        print("1. Добавьте бота в ваши каналы как администратора")
-        print("2. Дайте боту права на отправку сообщений")
-        print("3. Отправьте любое сообщение в канал")
-        print("4. Запустите этот скрипт снова")
-        return None, None
+        print("\n❌ Автоматический поиск каналов не дал результатов!")
+        print("\n� Попробуем прямой ввод ID каналов...")
+        
+        try:
+            return await finder._direct_channel_input()
+        except Exception as e:
+            print(f"❌ Ошибка прямого ввода: {e}")
+            return None, None
     
     print(f"\n🔧 НАСТРОЙКА КАНАЛОВ")
     print("-" * 20)
